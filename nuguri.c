@@ -29,6 +29,7 @@ char map[MAX_STAGES][MAP_HEIGHT][MAP_WIDTH + 1];
 int player_x, player_y;
 int stage = 0;
 int score = 0;
+int life = 3;
 
 // 플레이어 상태
 int is_jumping = 0;
@@ -86,6 +87,9 @@ int main() {
         }
 
         update_game(c);
+	if (life == 0){
+		game_over = 1;
+	}
         draw_game();
         usleep(90000);
 
@@ -169,7 +173,7 @@ void init_stage() {
 // 게임 화면 그리기
 void draw_game() {
     printf("\x1b[2J\x1b[H");
-    printf("Stage: %d | Score: %d\n", stage + 1, score);
+    printf("Stage: %d | Score: %d | Life: %d\n", stage + 1, score, life);
     printf("조작: ← → (이동), ↑ ↓ (사다리), Space (점프), q (종료)\n");
 
     char display_map[MAP_HEIGHT][MAP_WIDTH + 1];
@@ -237,7 +241,7 @@ void move_player(char input) {
     if (on_ladder && (input == 'w' || input == 's')) {
         if(next_y >= 0 && next_y < MAP_HEIGHT && map[stage][next_y][player_x] != '#') {
             player_y = next_y;
-            is_jumping = 0;
+            is_jumping = 1;
             velocity_y = 0;
         }
     } 
@@ -286,7 +290,10 @@ void check_collisions() {
     for (int i = 0; i < enemy_count; i++) {
         if (player_x == enemies[i].x && player_y == enemies[i].y) {
             score = (score > 50) ? score - 50 : 0;
+	    life--;
+	    if(life> 0){
             init_stage();
+	    }
             return;
         }
     }
