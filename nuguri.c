@@ -254,7 +254,7 @@ void move_player(char input) {
             if (velocity_y < 0 && next_y < MAP_HEIGHT && map[stage][next_y][player_x] == '#') {
                 velocity_y = 0;
             }
-	    else if (next_y < MAP_HEIGHT)
+	    else if (next_y < MAP_HEIGHT){
 	   if(velocity_y > 0) {
 		   for(int i =0; i<velocity_y; i++){
             if ((player_y + 1 < MAP_HEIGHT) && map[stage][player_y + 1][player_x] == '#') {
@@ -262,7 +262,7 @@ void move_player(char input) {
                 velocity_y = 0;
 		break;
             }
-	    player++;
+	    player_y++;
 	      }
 	   }
 	   else{
