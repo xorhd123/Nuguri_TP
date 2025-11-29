@@ -56,6 +56,67 @@ void move_enemies();
 void check_collisions();
 int kbhit();
 
+void show_title_screen() {
+    printf("\n\n");
+    printf("  =======================================================\n");
+    printf("  |                                                     |\n");
+    printf("  |    _   _   _   _   _   _         _   _   _   _      |\n");
+    printf("  |   / \\ / \\ / \\ / \\ / \\ / \\       / \\ / \\ / \\ / \\     |\n");
+    printf("  |  ( N | U | G | U | R | I )     ( G | A | M | E )    |\n");
+    printf("  |   \\_/ \\_/ \\_/ \\_/ \\_/ \\_/       \\_/ \\_/ \\_/ \\_/     |\n");
+    printf("  |                                                     |\n");
+    printf("  =======================================================\n");
+    printf("\n");
+    printf("               너구리의 모험을 시작합니다  \n");
+    printf("\n");
+    printf("        [조작법]\n");
+    printf("        ←/→/↑/↓ : 이동 및 사다리 타기\n");
+    printf("        SPACE   : 점프\n");
+    printf("        q       : 게임 종료\n");
+    printf("\n");
+    printf("    ===================================================\n");
+    printf("             Press Enter to Start Game... \n");
+    printf("    ===================================================\n");
+
+    // 엔터 키 입력 대기
+    while (getchar() != '\n');
+}
+
+// is_clear: 1이면 클리어, 0이면 게임 오버
+void show_ending_screen(int is_clear, int final_score) {
+    
+    printf("\n\n");
+    if (is_clear) {
+        // 게임 클리어 화면
+        printf("           /\\___/\\   \n");
+        printf("          (  o o  )  <  축하합니다! \n");
+        printf("          /   *   \\     너구리가 집으로 돌아갔어요!\n");
+        printf("          \\__\\_/__/  \n");
+        printf("            /   \\    \n");
+        printf("           (     )     \n");
+        printf("           /     \\    \n");
+        printf("\n");
+        printf("    모든 스테이지를 정복하셨습니다!\n");
+    } else {
+        // 게임 오버 화면
+        printf("            G A M E  O V E R       \n");
+        printf("    ===============================\n");
+        printf("    너구리가 지쳐서 쓰러졌습니다...\n");
+        printf("    다시 도전해보세요!\n");
+        printf("    ===============================\n");
+    }
+
+    printf("\n");
+    printf("    ===============================\n");
+    printf("           최종 점수 : %d 점\n", final_score);
+    printf("    ===============================\n");
+    printf("\n");
+    printf("    아무 키나 누르면 종료합니다...\n");
+    
+    // 종료 전 대기 
+    getchar(); 
+}
+
 int main() {
     srand(time(NULL));
     enable_raw_mode();
