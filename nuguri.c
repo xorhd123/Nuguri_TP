@@ -56,7 +56,19 @@ void move_enemies();
 void check_collisions();
 int kbhit();
 
+// 화면 지우기
+void clear_screen() {
+    #ifdef _WIN32
+        system("cls");
+    #else
+        printf("\x1b[2J\x1b[H");
+    #endif
+}
+
 void show_title_screen() {
+
+    clear_screen();
+
     printf("\n\n");
     printf("  =======================================================\n");
     printf("  |                                                     |\n");
@@ -85,6 +97,8 @@ void show_title_screen() {
 // is_clear: 1이면 클리어, 0이면 게임 오버
 void show_ending_screen(int is_clear, int final_score) {
     
+    clear_screen();
+
     printf("\n\n");
     if (is_clear) {
         // 게임 클리어 화면
@@ -121,16 +135,19 @@ int main() {
     srand(time(NULL));
     enable_raw_mode();
     load_maps();
+    show_title_screen();
     init_stage();
 
     char c = '\0';
     int game_over = 0;
+    int is_clear = 0; //0:게임오버, 1:게임클리어
 
     while (!game_over && stage < MAX_STAGES) {
         if (kbhit()) {
             c = getchar();
             if (c == 'q') {
                 game_over = 1;
+                is_clear = 0;
                 continue;
             }
             if (c == '\x1b') {
@@ -157,6 +174,7 @@ int main() {
                 init_stage();
             } else {
                 game_over = 1;
+                is_clear = 1;
                 printf("\x1b[2J\x1b[H");
                 printf("축하합니다! 모든 스테이지를 클리어했습니다!\n");
                 printf("최종 점수: %d\n", score);
@@ -165,6 +183,7 @@ int main() {
     }
 
     disable_raw_mode();
+    show_ending_screen(is_clear, score);
     return 0;
 }
 
