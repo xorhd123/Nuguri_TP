@@ -109,7 +109,7 @@ void show_ending_screen(int is_clear, int final_score) {
     clear_screen();
 
     printf("\n\n");
-    if (is_clear) {
+    if (is_clear == 1) {
         // 게임 클리어 화면
         printf("           /\\___/\\   \n");
         printf("          (  o o  )  <  축하합니다! \n");
@@ -120,7 +120,7 @@ void show_ending_screen(int is_clear, int final_score) {
         printf("           /     \\    \n");
         printf("\n");
         printf("    모든 스테이지를 정복하셨습니다!\n");
-    } else {
+    } else if (is_clear == 0) {
         // 게임 오버 화면
         printf("            G A M E  O V E R       \n");
         printf("    ===============================\n");
@@ -129,12 +129,14 @@ void show_ending_screen(int is_clear, int final_score) {
         printf("    ===============================\n");
     }
 
-    printf("\n");
-    printf("    ===============================\n");
-    printf("           최종 점수 : %d 점\n", final_score);
-    printf("    ===============================\n");
-    printf("\n");
-    printf("    아무 키나 누르면 종료합니다...\n");
+    else{
+        printf("\n");
+        printf("    ===============================\n");
+        printf("           최종 점수 : %d 점\n", final_score);
+        printf("    ===============================\n");
+        printf("\n");
+        printf("    아무 키나 누르면 종료합니다...\n");
+    }
     
     // 종료 전 대기 
     getchar(); 
@@ -163,7 +165,7 @@ int main() {
             #endif
             if (c == 'q') {
                 game_over = 1;
-                is_clear = 0;
+                is_clear = 2;
                 continue;
             }
             if (c == '\x1b') {
@@ -185,9 +187,9 @@ int main() {
 	}
         draw_game();
         #ifdef _WIN32
-            Sleep(90);
+            Sleep(140);
         #else
-            usleep(90000);
+            usleep(140000);
         #endif
 
         if (map[stage][player_y][player_x] == 'E') {
@@ -345,8 +347,13 @@ void move_player(char input) {
         case 's': if (on_ladder && (player_y + 1 < MAP_HEIGHT) && map[stage][player_y + 1][player_x] != '#') next_y++; break;
         case ' ':
             if (!is_jumping && (floor_tile == '#' || on_ladder)) {
-                is_jumping = 1;
-                velocity_y = -2;
+                if(!on_ladder){
+                    is_jumping = 1;
+                    velocity_y = -2;
+                }
+                else if(on_ladder && map[stage][player_y - 1][player_x] == '#'){
+                    player_y -= 2;
+                }
             }
             break;
     }
@@ -356,7 +363,7 @@ void move_player(char input) {
     if (on_ladder && (input == 'w' || input == 's')) {
         if(next_y >= 0 && next_y < MAP_HEIGHT && map[stage][next_y][player_x] != '#') {
             player_y = next_y;
-            is_jumping = 1;
+            is_jumping = 0;
             velocity_y = 0;
         }
     } 
