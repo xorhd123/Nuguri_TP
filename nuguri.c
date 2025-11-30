@@ -1,8 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <termios.h>
+#ifdef _WIN32
+    #include <windows.h>
+    #include <conio.h>
+#else
+    #include <unistd.h>
+    #include <termios.h>
+#endif
 #include <fcntl.h>
 #include <time.h>
 
@@ -42,8 +47,11 @@ Coin coins[MAX_COINS];
 int coin_count = 0;
 
 // 터미널 설정
-struct termios orig_termios;
-
+#ifdef _WIN32
+    DWORD orig_mode;
+#else
+    struct termios orig_termios;
+#endif
 // 함수 선언
 void disable_raw_mode();
 void enable_raw_mode();
@@ -132,6 +140,9 @@ void show_ending_screen(int is_clear, int final_score) {
 }
 
 int main() {
+    #ifdef _WIN32
+        system("chcp 65001 > nul");
+    #endif
     srand(time(NULL));
     enable_raw_mode();
     load_maps();
@@ -144,7 +155,11 @@ int main() {
 
     while (!game_over && stage < MAX_STAGES) {
         if (kbhit()) {
-            c = getchar();
+            #ifdef _WIN32
+                c = _getch();
+            #else
+                c = getchar();
+            #endif
             if (c == 'q') {
                 game_over = 1;
                 is_clear = 0;
@@ -165,7 +180,11 @@ int main() {
 
         update_game(c);
         draw_game();
-        usleep(90000);
+        #ifdef _WIN32
+            Sleep(90);
+        #else
+            usleep(90000);
+        #endif
 
         if (map[stage][player_y][player_x] == 'E') {
             stage++;
@@ -189,14 +208,30 @@ int main() {
 
 
 // 터미널 Raw 모드 활성화/비활성화
-void disable_raw_mode() { tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios); }
-void enable_raw_mode() {
-    tcgetattr(STDIN_FILENO, &orig_termios);
-    atexit(disable_raw_mode);
-    struct termios raw = orig_termios;
-    raw.c_lflag &= ~(ECHO | ICANON);
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+#ifdef _WIN32
+    void disable_raw_mode() {
+        HANDLE hin = GetStdHandle(STD_INPUT_HANDLE);
+        SetConsoleMode(hin, orig_mode);
+    }
+
+    void enable_raw_mode() {
+        HANDLE hin = GetStdHandle(STD_INPUT_HANDLE);
+        GetConsoleMode(hin, &orig_mode); // tcsetattr 대응
+        atexit(disable_raw_mode);
+        DWORD mode = orig_mode;
+        mode &= ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT);
+        SetConsoleMode(hin, mode);
+    }
+#else
+    void disable_raw_mode() { tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios); }
+    void enable_raw_mode() {
+        tcgetattr(STDIN_FILENO, &orig_termios);
+        atexit(disable_raw_mode);
+        struct termios raw = orig_termios;
+        raw.c_lflag &= ~(ECHO | ICANON);
+        tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
+#endif
 
 // 맵 파일 로드
 void load_maps() {
@@ -380,21 +415,25 @@ void check_collisions() {
 
 // 비동기 키보드 입력 확인
 int kbhit() {
-    struct termios oldt, newt;
-    int ch;
-    int oldf;
-    tcgetattr(STDIN_FILENO, &oldt);
-    newt = oldt;
-    newt.c_lflag &= ~(ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
-    ch = getchar();
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-    fcntl(STDIN_FILENO, F_SETFL, oldf);
-    if(ch != EOF) {
-        ungetc(ch, stdin);
-        return 1;
-    }
-    return 0;
+    #ifdef _WIN32
+        return _kbhit();
+    #else
+        struct termios oldt, newt;
+        int ch;
+        int oldf;
+        tcgetattr(STDIN_FILENO, &oldt);
+        newt = oldt;
+        newt.c_lflag &= ~(ICANON | ECHO);
+        tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+        oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+        fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+        ch = getchar();
+        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+        fcntl(STDIN_FILENO, F_SETFL, oldf);
+        if(ch != EOF) {
+            ungetc(ch, stdin);
+            return 1;
+        }
+        return 0;
+    #endif
 }
