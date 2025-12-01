@@ -1,12 +1,23 @@
+# .antigravityrules
+1. 모든 대답은 '한국어'로 해주세요.
+2. 코드를 수정할 때는 기존 스타일(Prettier 설정)을 반드시 따르세요.
+# .antigravityrules
+1. 모든 대답은 '한국어'로 해주세요.
+2. 코드를 수정할 때는 기존 스타일(Prettier 설정)을 반드시 따르세요.
+3. 새로운 라이브러리를 설치할 때는 반드시 허락을 구하세요.
+4. 주석은 친절하고 구체적으로 달아주세요.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+// 크로스 플랫폼 헤더 포함
+// Windows와 리눅스/macOS는 시스템 API가 다르기 때문에 분기 처리가 필요합니다.
 #ifdef _WIN32
-    #include <windows.h>
-    #include <conio.h>
+    #include <windows.h> // Windows API 사용을 위한 헤더
+    #include <conio.h>   // Windows 콘솔 입출력 함수 (_getch, _kbhit 등)
 #else
-    #include <unistd.h>
-    #include <termios.h>
+    #include <unistd.h>  // POSIX 운영체제 API (usleep 등)
+    #include <termios.h> // 터미널 I/O 설정 (raw 모드 등)
 #endif
 #include <fcntl.h>
 #include <time.h>
@@ -47,10 +58,12 @@ Coin coins[MAX_COINS];
 int coin_count = 0;
 
 // 터미널 설정
+// 터미널 설정을 저장하기 위한 변수
+// 프로그램 종료 시 원래 터미널 설정으로 복구하기 위해 사용합니다.
 #ifdef _WIN32
-    DWORD orig_mode;
+    DWORD orig_mode; // Windows 콘솔 모드 저장 변수
 #else
-    struct termios orig_termios;
+    struct termios orig_termios; // POSIX 터미널 속성 저장 구조체
 #endif
 // 함수 선언
 void disable_raw_mode();
@@ -65,6 +78,8 @@ void check_collisions();
 int kbhit();
 
 int main() {
+    // Windows 콘솔의 코드 페이지를 UTF-8(65001)로 변경합니다.
+    // 한글이나 특수 문자가 깨지지 않고 올바르게 출력되도록 돕습니다.
     #ifdef _WIN32
         system("chcp 65001 > nul");
     #endif
@@ -78,6 +93,9 @@ int main() {
 
     while (!game_over && stage < MAX_STAGES) {
         if (kbhit()) {
+            // 키 입력 처리
+            // Windows는 _getch()를 사용하여 버퍼 없이 바로 입력을 받습니다.
+            // 리눅스/macOS는 getchar()를 사용하지만, 미리 설정한 Raw 모드 덕분에 버퍼 없이 동작합니다.
             #ifdef _WIN32
                 c = _getch();
             #else
@@ -102,6 +120,9 @@ int main() {
 
         update_game(c);
         draw_game();
+        // 게임 루프 속도 조절 (딜레이)
+        // Windows의 Sleep은 밀리초(ms) 단위이고, POSIX의 usleep은 마이크로초(us) 단위입니다.
+        // 90ms = 90000us
         #ifdef _WIN32
             Sleep(90);
         #else
@@ -128,28 +149,38 @@ int main() {
 
 
 // 터미널 Raw 모드 활성화/비활성화
+// 터미널 Raw 모드 활성화/비활성화
+// Raw 모드란? 사용자가 키를 누르자마자 프로그램이 반응하도록 하고(Line buffering 비활성화),
+// 입력한 키가 화면에 바로 보이지 않게(Echo 비활성화) 하는 설정입니다.
+
 #ifdef _WIN32
+    // Windows 환경에서의 Raw 모드 설정
     void disable_raw_mode() {
         HANDLE hin = GetStdHandle(STD_INPUT_HANDLE);
-        SetConsoleMode(hin, orig_mode);
+        SetConsoleMode(hin, orig_mode); // 원래 모드로 복구
     }
 
     void enable_raw_mode() {
         HANDLE hin = GetStdHandle(STD_INPUT_HANDLE);
-        GetConsoleMode(hin, &orig_mode); // tcsetattr 대응
-        atexit(disable_raw_mode);
+        GetConsoleMode(hin, &orig_mode); // 현재 콘솔 모드 저장
+        atexit(disable_raw_mode); // 프로그램 종료 시 자동으로 disable_raw_mode 호출
         DWORD mode = orig_mode;
+        // ENABLE_ECHO_INPUT: 입력한 키를 화면에 표시하지 않음
+        // ENABLE_LINE_INPUT: 엔터 키를 누르지 않아도 입력을 받음
         mode &= ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT);
-        SetConsoleMode(hin, mode);
+        SetConsoleMode(hin, mode); // 변경된 모드 적용
     }
 #else
-    void disable_raw_mode() { tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios); }
+    // 리눅스/macOS 환경에서의 Raw 모드 설정
+    void disable_raw_mode() { tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios); } // 원래 설정으로 복구
     void enable_raw_mode() {
-        tcgetattr(STDIN_FILENO, &orig_termios);
-        atexit(disable_raw_mode);
+        tcgetattr(STDIN_FILENO, &orig_termios); // 현재 터미널 속성 저장
+        atexit(disable_raw_mode); // 프로그램 종료 시 복구 함수 등록
         struct termios raw = orig_termios;
+        // ECHO: 입력 문자 화면 출력 비활성화
+        // ICANON: 라인 버퍼링 비활성화 (엔터 없이 즉시 입력)
         raw.c_lflag &= ~(ECHO | ICANON);
-        tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+        tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw); // 변경된 속성 적용
 }
 #endif
 
@@ -334,22 +365,36 @@ void check_collisions() {
 }
 
 // 비동기 키보드 입력 확인
+// 비동기 키보드 입력 확인 함수
+// 키보드가 눌렸는지 확인만 하고, 눌리지 않았으면 바로 0을 반환하여 게임 루프가 멈추지 않게 합니다.
 int kbhit() {
     #ifdef _WIN32
-        return _kbhit();
+        return _kbhit(); // Windows는 conio.h의 _kbhit() 함수가 이 기능을 제공합니다.
     #else
+        // 리눅스/macOS는 표준 라이브러리에 kbhit()이 없어서 직접 구현해야 합니다.
         struct termios oldt, newt;
         int ch;
         int oldf;
+        
+        // 1. 현재 터미널 설정 백업 및 변경 (Non-canonical 모드, Echo 끄기)
         tcgetattr(STDIN_FILENO, &oldt);
         newt = oldt;
         newt.c_lflag &= ~(ICANON | ECHO);
         tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+        
+        // 2. 파일 상태 플래그 변경 (Non-blocking 모드 설정)
+        // 입력이 없으면 기다리지 않고 바로 리턴하도록 설정
         oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
         fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+        
+        // 3. 문자 읽기 시도
         ch = getchar();
+        
+        // 4. 터미널 설정 및 파일 상태 복구
         tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
         fcntl(STDIN_FILENO, F_SETFL, oldf);
+        
+        // 5. 문자가 읽혔다면 다시 입력 버퍼에 넣고 1 반환 (키 눌림 감지)
         if(ch != EOF) {
             ungetc(ch, stdin);
             return 1;
