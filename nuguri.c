@@ -1,8 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <termios.h>
+#ifdef _WIN32
+    #include <windows.h>
+    #include <conio.h>
+#else
+    #include <unistd.h>
+    #include <termios.h>
+#endif
 #include <fcntl.h>
 #include <time.h>
 
@@ -12,6 +17,22 @@
 #define MAX_STAGES 2
 #define MAX_ENEMIES 15 // 최대 적 개수 증가
 #define MAX_COINS 30   // 최대 코인 개수 증가
+#define C0 260  // 낮은 도
+#define D0 290  // 낮은 레
+#define E0 330  // 낮은 미
+#define F0 350  // 낮은 파
+#define G0 380  // 낮은 솔
+#define A0 420  // 낮은 라
+#define B0 480  // 낮은 시
+#define C1 510  // 도
+#define C 1040  // 높은 도
+#define D 1150  // 높은 레
+#define E 1300  // 높은 미
+#define F 1400  // 높은 파
+#define G 1550  // 높은 솔
+#define A 1750  // 높은 라
+#define B 1970  // 높은 시
+#define C2 2100  // 더 높은 도
 
 // 구조체 정의
 typedef struct {
@@ -43,8 +64,11 @@ Coin coins[MAX_COINS];
 int coin_count = 0;
 
 // 터미널 설정
-struct termios orig_termios;
-
+#ifdef _WIN32
+    DWORD orig_mode;
+#else
+    struct termios orig_termios;
+#endif
 // 함수 선언
 void disable_raw_mode();
 void enable_raw_mode();
@@ -57,20 +81,137 @@ void move_enemies();
 void check_collisions();
 int kbhit();
 
+void delay(int ms) {
+  #ifdef _WIN32
+    Sleep(ms);
+  #else
+    usleep(ms * 1000);
+  #endif
+}
+
+void opening_bgm() {
+	Beep(E, 400); delay(100); Beep(E, 400); delay(100); Beep(E, 200); Beep(D, 200); Beep(E, 300); Beep(F, 300); Beep(G, 400); Beep(G, 300); Beep(G, 300); Beep(E, 500); delay(200);
+	Beep(D, 400); Beep(D, 400); Beep(E, 200); delay(100); Beep(F, 200); Beep(F, 200); delay(50); Beep(E, 200); delay(50); Beep(D, 150); delay(50); Beep(C, 400); Beep(C2, 400); Beep(C, 400);
+}
+
+void stage_skip_bgm() {
+	Beep(C, 400); delay(60); Beep(E, 400); delay(60); Beep(G, 300); delay(20); Beep(E, 300); delay(20); Beep(C, 400); delay(30);
+	Beep(A, 250); Beep(G, 250); Beep(A, 250); Beep(B, 250); Beep(C2, 300);
+}
+
+void jump_sound() {
+	Beep(C, 30); Beep(E, 30); Beep(G, 30); Beep(C2, 40);
+}
+
+void coin_sound() {
+	Beep(C0, 30); Beep(E0, 30); Beep(G0, 30); Beep(C0, 30); Beep(E0, 30); Beep(G0, 30);
+}
+
+void game_over_sound() {
+	Beep(C1, 400); Beep(G0, 200); Beep(G0, 200); Beep(A0, 400); Beep(G0, 600); delay(100); Beep(B0, 400); Beep(C1, 400);
+}
+
+// 화면 지우기
+void clear_screen() {
+    #ifdef _WIN32
+        system("cls");
+    #else
+        printf("\x1b[2J\x1b[H");
+    #endif
+}
+
+void show_title_screen() {
+
+    clear_screen();
+
+    printf("\n\n");
+    printf("  =======================================================\n");
+    printf("  |                                                     |\n");
+    printf("  |    _   _   _   _   _   _         _   _   _   _      |\n");
+    printf("  |   / \\ / \\ / \\ / \\ / \\ / \\       / \\ / \\ / \\ / \\     |\n");
+    printf("  |  ( N | U | G | U | R | I )     ( G | A | M | E )    |\n");
+    printf("  |   \\_/ \\_/ \\_/ \\_/ \\_/ \\_/       \\_/ \\_/ \\_/ \\_/     |\n");
+    printf("  |                                                     |\n");
+    printf("  =======================================================\n");
+    printf("\n");
+    printf("               너구리의 모험을 시작합니다  \n");
+    printf("\n");
+    printf("        [조작법]\n");
+    printf("        ←/→/↑/↓ : 이동 및 사다리 타기\n");
+    printf("        SPACE   : 점프\n");
+    printf("        q       : 게임 종료\n");
+    printf("\n");
+    printf("    ===================================================\n");
+    printf("             Press Enter to Start Game... \n");
+    printf("    ===================================================\n");
+	opening_bgm();
+    // 엔터 키 입력 대기
+    while (getchar() != '\n');
+}
+
+// is_clear: 1이면 클리어, 0이면 게임 오버
+void show_ending_screen(int is_clear, int final_score) {
+    
+    clear_screen();
+    printf("\n\n");
+    if (is_clear == 1) {
+        // 게임 클리어 화면
+        printf("           /\\___/\\   \n");
+        printf("          (  o o  )  <  축하합니다! \n");
+        printf("          /   *   \\     너구리가 집으로 돌아갔어요!\n");
+        printf("          \\__\\_/__/  \n");
+        printf("            /   \\    \n");
+        printf("           (     )     \n");
+        printf("           /     \\    \n");
+        printf("\n");
+        printf("    모든 스테이지를 정복하셨습니다!\n");
+    } else if (is_clear == 0) {
+        // 게임 오버 화면
+        printf("            G A M E  O V E R       \n");
+        printf("    ===============================\n");
+        printf("    너구리가 지쳐서 쓰러졌습니다...\n");
+        printf("    다시 도전해보세요!\n");
+        printf("    ===============================\n");
+		game_over_sound();
+    }
+
+    else{
+        printf("\n");
+        printf("    ===============================\n");
+        printf("           최종 점수 : %d 점\n", final_score);
+        printf("    ===============================\n");
+        printf("\n");
+        printf("    아무 키나 누르면 종료합니다...\n");
+    }
+    
+    // 종료 전 대기 
+    getchar(); 
+}
+
 int main() {
+    #ifdef _WIN32
+        system("chcp 65001 > nul");
+    #endif
     srand(time(NULL));
     enable_raw_mode();
     load_maps();
+    show_title_screen();
     init_stage();
 
     char c = '\0';
     int game_over = 0;
+    int is_clear = 0; //0:게임오버, 1:게임클리어
 
     while (!game_over && stage < MAX_STAGES) {
         if (kbhit()) {
-            c = getchar();
+            #ifdef _WIN32
+                c = _getch();
+            #else
+                c = getchar();
+            #endif
             if (c == 'q') {
                 game_over = 1;
+                is_clear = 2;
                 continue;
             }
             if (c == '\x1b') {
@@ -91,15 +232,21 @@ int main() {
 		game_over = 1;
 	}
         draw_game();
-        usleep(90000);
+        #ifdef _WIN32
+            Sleep(140);
+        #else
+            usleep(140000);
+        #endif
 
         if (map[stage][player_y][player_x] == 'E') {
             stage++;
             score += 100;
             if (stage < MAX_STAGES) {
                 init_stage();
+				stage_skip_bgm();
             } else {
                 game_over = 1;
+                is_clear = 1;
                 printf("\x1b[2J\x1b[H");
                 printf("축하합니다! 모든 스테이지를 클리어했습니다!\n");
                 printf("최종 점수: %d\n", score);
@@ -108,19 +255,36 @@ int main() {
     }
 
     disable_raw_mode();
+    show_ending_screen(is_clear, score);
     return 0;
 }
 
 
 // 터미널 Raw 모드 활성화/비활성화
-void disable_raw_mode() { tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios); }
-void enable_raw_mode() {
-    tcgetattr(STDIN_FILENO, &orig_termios);
-    atexit(disable_raw_mode);
-    struct termios raw = orig_termios;
-    raw.c_lflag &= ~(ECHO | ICANON);
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+#ifdef _WIN32
+    void disable_raw_mode() {
+        HANDLE hin = GetStdHandle(STD_INPUT_HANDLE);
+        SetConsoleMode(hin, orig_mode);
+    }
+
+    void enable_raw_mode() {
+        HANDLE hin = GetStdHandle(STD_INPUT_HANDLE);
+        GetConsoleMode(hin, &orig_mode); // tcsetattr 대응
+        atexit(disable_raw_mode);
+        DWORD mode = orig_mode;
+        mode &= ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT);
+        SetConsoleMode(hin, mode);
+    }
+#else
+    void disable_raw_mode() { tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios); }
+    void enable_raw_mode() {
+        tcgetattr(STDIN_FILENO, &orig_termios);
+        atexit(disable_raw_mode);
+        struct termios raw = orig_termios;
+        raw.c_lflag &= ~(ECHO | ICANON);
+        tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
+#endif
 
 // 맵 파일 로드
 void load_maps() {
@@ -230,8 +394,15 @@ void move_player(char input) {
         case 's': if (on_ladder && (player_y + 1 < MAP_HEIGHT) && map[stage][player_y + 1][player_x] != '#') next_y++; break;
         case ' ':
             if (!is_jumping && (floor_tile == '#' || on_ladder)) {
-                is_jumping = 1;
-                velocity_y = -2;
+                if(!on_ladder){
+                    is_jumping = 1;
+                    velocity_y = -2;
+					jump_sound();
+                }
+                else if(on_ladder && map[stage][player_y - 1][player_x] == '#'){
+                    player_y -= 2;
+					jump_sound();
+                }
             }
             break;
     }
@@ -241,7 +412,7 @@ void move_player(char input) {
     if (on_ladder && (input == 'w' || input == 's')) {
         if(next_y >= 0 && next_y < MAP_HEIGHT && map[stage][next_y][player_x] != '#') {
             player_y = next_y;
-            is_jumping = 1;
+            is_jumping = 0;
             velocity_y = 0;
         }
     } 
@@ -310,27 +481,32 @@ void check_collisions() {
         if (!coins[i].collected && player_x == coins[i].x && player_y == coins[i].y) {
             coins[i].collected = 1;
             score += 20;
+			coin_sound();
         }
     }
 }
 
 // 비동기 키보드 입력 확인
 int kbhit() {
-    struct termios oldt, newt;
-    int ch;
-    int oldf;
-    tcgetattr(STDIN_FILENO, &oldt);
-    newt = oldt;
-    newt.c_lflag &= ~(ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
-    ch = getchar();
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-    fcntl(STDIN_FILENO, F_SETFL, oldf);
-    if(ch != EOF) {
-        ungetc(ch, stdin);
-        return 1;
-    }
-    return 0;
+    #ifdef _WIN32
+        return _kbhit();
+    #else
+        struct termios oldt, newt;
+        int ch;
+        int oldf;
+        tcgetattr(STDIN_FILENO, &oldt);
+        newt = oldt;
+        newt.c_lflag &= ~(ICANON | ECHO);
+        tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+        oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+        fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+        ch = getchar();
+        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+        fcntl(STDIN_FILENO, F_SETFL, oldf);
+        if(ch != EOF) {
+            ungetc(ch, stdin);
+            return 1;
+        }
+        return 0;
+    #endif
 }
