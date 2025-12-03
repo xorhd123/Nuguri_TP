@@ -332,7 +332,6 @@ void update_game(char input) {
     check_collisions();
 }
 
-// 플레이어 이동 로직
 void move_player(char input) {
     int next_x = player_x, next_y = player_y;
     char floor_tile = (player_y + 1 < MAP_HEIGHT) ? map[stage][player_y + 1][player_x] : '#';
@@ -346,10 +345,11 @@ void move_player(char input) {
         case 'w': if (on_ladder) next_y--; break;
         case 's':
             if (on_ladder && (player_y + 1 < MAP_HEIGHT) && map[stage][player_y + 1][player_x] != '#') next_y++;
-            if (floor_tile == '#' && map[stage][player_y + 2][player_x] == 'H'){
+            if (floor_tile == '#' && (player_y + 2 < MAP_HEIGHT) && map[stage][player_y + 2][player_x] == 'H'){
                 player_y += 2;
             }
             break;
+            
         case ' ':
             if (!is_jumping && (floor_tile == '#' || on_ladder)) {
                 if(on_ladder && map[stage][player_y - 1][player_x] == '#'){
@@ -357,7 +357,6 @@ void move_player(char input) {
                     break;
                 }
                 if(!on_ladder){
-                    // 상단 2칸 내에 벽이 있는지 미리 확인
                     int can_jump = 1;
                     if (player_y > 0 && map[stage][player_y - 1][player_x] == '#') {
                         can_jump = 0;
@@ -371,71 +370,104 @@ void move_player(char input) {
             break;
     }
     
-    // 수평 이동 충돌 검사 및 적용 (벽 뚫기 방지)
-    
     if (next_x >= 0 && next_x < MAP_WIDTH && map[stage][player_y][next_x] != '#') {
         player_x = next_x;
     }
     
-    // 사다리 위에서의 수직 이동
     if (on_ladder && (input == 'w' || input == 's')) {
         if(next_y >= 0 && next_y < MAP_HEIGHT && map[stage][next_y][player_x] != '#') {
             player_y = next_y;
-            is_jumping = 0;
+            is_jumping = 0; 
             velocity_y = 0;
-            return;
+            return; 
         }
     } 
-
     
-    // 공중에 떠 있는지 확인하기 위한 변수
     int is_airborne = !(floor_tile == '#' || on_ladder); 
     
     if (is_jumping || is_airborne) {
-        // 점프 X 공중 O 일때 낙하상태 시작
         if (!is_jumping && is_airborne) {
             is_jumping = 1;
-            velocity_y = 1;
+            velocity_y = 1; 
         }
         
-        // 현재 위치에서 다음 프레임에 도달할 Y 위치
         int target_y = player_y + velocity_y;
 
-				// 상승시 충돌 검사
+        // 점프 이동시 충돌 검사
         if (velocity_y < 0) {
-            if (target_y < 0 || map[stage][target_y][player_x] == '#') {
+            int next_y_try = target_y;
+            int hit_obstacle = 0;
+            
+            // 이동 경로 (player_y - 1)부터 next_y_try까지의 모든 칸 검사
+            for (int y = player_y - 1; y >= next_y_try; y--) {
+                if (y < 0) {
+                    hit_obstacle = 1; // 맵 상단 경계 충돌
+                    break;
+                }
+                
+                char obstacle = map[stage][y][player_x];
+                
+                if (obstacle == '#') {
+                    hit_obstacle = 1;
+                    break;
+                }
+                
+                // check_collisions 함수 내의 적 충돌 기능을 y축 한 픽셀씩 이동할때마다 검사하기 위해 move_player 함수 내로 이동
+                for (int i = 0; i < enemy_count; i++) {
+                    if (y == enemies[i].y && player_x == enemies[i].x) {
+                        score = (score > 50) ? score - 50 : 0;
+                        life--;
+                        if (life > 0) {
+                            init_stage();
+                        }
+                        return;
+                    }
+                }
+            }
+
+            if (hit_obstacle) {
                 velocity_y = 0;
-                target_y = player_y;
+                target_y = player_y; // 이동하지 못하도록 목표 위치를 현재 위치로 재설정
             }
         }
-        
-        // 낙하시 충돌 검사
-        if (velocity_y >= 0) {
+        else if (velocity_y >= 0) {
             int landed = 0;
-            for (int y = player_y + 1; y <= target_y; y++) {
-                if (y >= MAP_HEIGHT) {
-                    landed = 2; // 강제 재시작
+            // 이동 경로 (player_y + 1)부터 target_y까지의 모든 칸 검사
+            int y_start = player_y; 
+            for (int y = y_start + 1; y <= target_y; y++) {
+                if (y >= MAP_HEIGHT) { 
+                    landed = 2; 
                     break;
                 }
                 
                 char obstacle = map[stage][y][player_x];
 
                 if (obstacle == '#' || obstacle == 'H') { 
-                    player_y = y - 1; // 바로 위 칸에 착지(멈춤)
+                    player_y = y - 1; 
                     is_jumping = 0;
                     velocity_y = 0;
                     landed = 1;
                     break;
                 }
+                
+                for (int i = 0; i < enemy_count; i++) {
+                    if (y == enemies[i].y && player_x == enemies[i].x) {
+                        score = (score > 50) ? score - 50 : 0;
+                        life--;
+                        if (life > 0) {
+                            init_stage();
+                        }
+                        return;
+                    }
+                }
             }
-            if (landed == 1) return; // 사다리나 바닥에 착지했으면 이동 종료
+            if (landed == 1) return; 
             if (landed == 2) { 
-                init_stage(); // 맵 아래로 벗어났으면 초기화
+                init_stage(); 
                 return;
             }
         }
-        
-        // 충돌이 없을때 이동
+
         player_y = target_y;
         velocity_y++;
     }
