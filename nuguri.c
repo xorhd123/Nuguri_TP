@@ -388,9 +388,16 @@ void move_player(char input) {
             if ((player_y + 1 < MAP_HEIGHT) && map[stage][player_y + 1][player_x] == '#') {
                 is_jumping = 0;
                 velocity_y = 0;
-		break;
+		        break;
             }
-	    player_y++;
+
+            if ((player_y + 1 < MAP_HEIGHT) && map[stage][player_y][player_x] == 'H') {
+                player_y++;       // 사다리 위치로 한 칸 이동
+                is_jumping = 0;  // 점프 종료
+                velocity_y = 0;  // 중력 초기화
+                return;          // 아래로 못 더 떨어지게 즉시 종료
+            }
+	        player_y++;
 	      }
 	   }
 	   else{
