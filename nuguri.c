@@ -509,6 +509,12 @@ void check_collisions() {
     }
     for (int i = 0; i < coin_count; i++) {
         if (!coins[i].collected && player_x == coins[i].x && player_y == coins[i].y) {
+            #ifdef _WIN32
+                Beep(500, 200);
+            #else
+                printf("\a");
+                fflush(stdout);
+            #endif
             coins[i].collected = 1;
             score += 20;
         }
