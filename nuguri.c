@@ -350,67 +350,94 @@ void move_player(char input) {
                 player_y += 2;
             }
             break;
-            
         case ' ':
             if (!is_jumping && (floor_tile == '#' || on_ladder)) {
-                if(!on_ladder){
-                    is_jumping = 1;
-                    velocity_y = -2;
-                }
-                else if(on_ladder && map[stage][player_y - 1][player_x] == '#'){
+                if(on_ladder && map[stage][player_y - 1][player_x] == '#'){
                     player_y -= 2;
+                    break;
+                }
+                if(!on_ladder){
+                    // 상단 2칸 내에 벽이 있는지 미리 확인
+                    int can_jump = 1;
+                    if (player_y > 0 && map[stage][player_y - 1][player_x] == '#') {
+                        can_jump = 0;
+                    }
+                    if (can_jump) { 
+                        is_jumping = 1;
+                        velocity_y = -2;
+                    }
                 }
             }
             break;
     }
-
-    if (next_x >= 0 && next_x < MAP_WIDTH && map[stage][player_y][next_x] != '#') player_x = next_x;
     
+    // 수평 이동 충돌 검사 및 적용 (벽 뚫기 방지)
+    
+    if (next_x >= 0 && next_x < MAP_WIDTH && map[stage][player_y][next_x] != '#') {
+        player_x = next_x;
+    }
+    
+    // 사다리 위에서의 수직 이동
     if (on_ladder && (input == 'w' || input == 's')) {
         if(next_y >= 0 && next_y < MAP_HEIGHT && map[stage][next_y][player_x] != '#') {
             player_y = next_y;
             is_jumping = 0;
             velocity_y = 0;
+            return;
         }
     } 
-    else {
-        if (is_jumping) {
-            next_y = player_y + velocity_y;
-            if(next_y < 0) next_y = 0;
-            velocity_y++;
 
-            if (velocity_y < 0 && next_y < MAP_HEIGHT && map[stage][next_y][player_x] == '#') {
-                velocity_y = 0;
-            }
-	    else if (next_y < MAP_HEIGHT){
-	   if(velocity_y > 0) {
-		   for(int i =0; i<velocity_y; i++){
-            if ((player_y + 1 < MAP_HEIGHT) && map[stage][player_y + 1][player_x] == '#') {
-                is_jumping = 0;
-                velocity_y = 0;
-		        break;
-            }
+    
+    // 공중에 떠 있는지 확인하기 위한 변수
+    int is_airborne = !(floor_tile == '#' || on_ladder); 
+    
+    if (is_jumping || is_airborne) {
+        // 점프 X 공중 O 일때 낙하상태 시작
+        if (!is_jumping && is_airborne) {
+            is_jumping = 1;
+            velocity_y = 1;
+        }
+        
+        // 현재 위치에서 다음 프레임에 도달할 Y 위치
+        int target_y = player_y + velocity_y;
 
-            if ((player_y + 1 < MAP_HEIGHT) && map[stage][player_y][player_x] == 'H') {
-                player_y++;       // 사다리 위치로 한 칸 이동
-                is_jumping = 0;  // 점프 종료
-                velocity_y = 0;  // 중력 초기화
-                return;          // 아래로 못 더 떨어지게 즉시 종료
-            }
-	        player_y++;
-	      }
-	   }
-	   else{
-		   player_y = next_y;
-	   }
-	}
-    }
-        else {
-            if (floor_tile != '#' && floor_tile != 'H') {
-                 if (player_y + 1 < MAP_HEIGHT) player_y++;
-                 else init_stage();
+				// 상승시 충돌 검사
+        if (velocity_y < 0) {
+            if (target_y < 0 || map[stage][target_y][player_x] == '#') {
+                velocity_y = 0;
+                target_y = player_y;
             }
         }
+        
+        // 낙하시 충돌 검사
+        if (velocity_y >= 0) {
+            int landed = 0;
+            for (int y = player_y + 1; y <= target_y; y++) {
+                if (y >= MAP_HEIGHT) {
+                    landed = 2; // 강제 재시작
+                    break;
+                }
+                
+                char obstacle = map[stage][y][player_x];
+
+                if (obstacle == '#' || obstacle == 'H') { 
+                    player_y = y - 1; // 바로 위 칸에 착지(멈춤)
+                    is_jumping = 0;
+                    velocity_y = 0;
+                    landed = 1;
+                    break;
+                }
+            }
+            if (landed == 1) return; // 사다리나 바닥에 착지했으면 이동 종료
+            if (landed == 2) { 
+                init_stage(); // 맵 아래로 벗어났으면 초기화
+                return;
+            }
+        }
+        
+        // 충돌이 없을때 이동
+        player_y = target_y;
+        velocity_y++;
     }
     
     if (player_y >= MAP_HEIGHT) init_stage();
