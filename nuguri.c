@@ -344,7 +344,13 @@ void move_player(char input) {
         case 'a': next_x--; break;
         case 'd': next_x++; break;
         case 'w': if (on_ladder) next_y--; break;
-        case 's': if (on_ladder && (player_y + 1 < MAP_HEIGHT) && map[stage][player_y + 1][player_x] != '#') next_y++; break;
+        case 's':
+            if (on_ladder && (player_y + 1 < MAP_HEIGHT) && map[stage][player_y + 1][player_x] != '#') next_y++;
+            if (floor_tile == '#' && map[stage][player_y + 2][player_x] == 'H'){
+                player_y += 2;
+            }
+            break;
+            
         case ' ':
             if (!is_jumping && (floor_tile == '#' || on_ladder)) {
                 if(!on_ladder){
