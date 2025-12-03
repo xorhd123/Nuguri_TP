@@ -362,8 +362,14 @@ void move_player(char input) {
                         can_jump = 0;
                     }
                     if (can_jump) { 
-                        is_jumping = 1;
-                        velocity_y = -2;
+                        if(map[stage][player_y - 2][player_x] == '#'){
+                            is_jumping = 1;
+                            velocity_y = -1;
+                        }
+                        else{
+                            is_jumping = 1;
+                            velocity_y = -2;
+                        }
                     }
                 }
             }
@@ -413,6 +419,7 @@ void move_player(char input) {
                 }
                 
                 // check_collisions 함수 내의 적 충돌 기능을 y축 한 픽셀씩 이동할때마다 검사하기 위해 move_player 함수 내로 이동
+                // 적 충돌 로직이 중복되어도 여기서 적과 충돌하여 init_stage()로 인해 목숨이 2개 감소하는 현상은 없음
                 for (int i = 0; i < enemy_count; i++) {
                     if (y == enemies[i].y && player_x == enemies[i].x) {
                         score = (score > 50) ? score - 50 : 0;
@@ -422,7 +429,7 @@ void move_player(char input) {
                         }
                         return;
                     }
-                }
+                } 
             }
 
             if (hit_obstacle) {
