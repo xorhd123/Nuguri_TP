@@ -271,12 +271,14 @@ void load_maps() {
         // 빈 줄을 스테이지 구분자로 간주
         if (strlen(line) == 0) {
             break;
-        } else {
+        }
+        else {
             if (strlen(line) == map_width) {
                  stage_rows++;
             }
         }
     }
+
     map_height = stage_rows;
     
     if (map_width <= 0 || map_height <= 0) {
@@ -290,8 +292,11 @@ void load_maps() {
     if (!map) { perror("메모리 할당 실패 (스테이지)"); fclose(file); exit(1); }
 
     for (int s = 0; s < MAX_STAGES; s++) {
+
         map[s] = (char**)malloc(map_height * sizeof(char*));
+
         if (!map[s]) { perror("메모리 할당 실패 (맵 높이)"); fclose(file); exit(1); }
+
         for (int r = 0; r < map_height; r++) {
             map[s][r] = (char*)malloc((map_width + 1) * sizeof(char));
             if (!map[s][r]) { perror("메모리 할당 실패 (맵 너비)"); fclose(file); exit(1); }
@@ -338,10 +343,12 @@ void init_stage() {
             if (cell == 'S') {
                 player_x = x;
                 player_y = y;
-            } else if (cell == 'X' && enemy_count < MAX_ENEMIES) {
+            }
+            else if (cell == 'X' && enemy_count < MAX_ENEMIES) {
                 enemies[enemy_count] = (Enemy){x, y, (rand() % 2) * 2 - 1};
                 enemy_count++;
-            } else if (cell == 'C' && coin_count < MAX_COINS) {
+            }
+            else if (cell == 'C' && coin_count < MAX_COINS) {
                 coins[coin_count++] = (Coin){x, y, 0};
             }
         }
@@ -371,7 +378,8 @@ void draw_game() {
             char cell = map[stage][y][x];
             if (cell == 'S' || cell == 'X' || cell == 'C') {
                 display_map[y][x] = ' ';
-            } else {
+            }
+            else {
                 display_map[y][x] = cell;
             }
         }
@@ -433,16 +441,20 @@ void move_player(char input) {
                     player_y -= 2;
                     break;
                 }
+
                 if(!on_ladder){
                     int can_jump = 1;
+
                     if (player_y > 0 && map[stage][player_y - 1][player_x] == '#') {
                         can_jump = 0;
                     }
+
                     if (can_jump) { 
                         if(map[stage][player_y - 2][player_x] == '#'){
                             is_jumping = 1;
                             velocity_y = -1;
                         }
+
                         else{
                             is_jumping = 1;
                             velocity_y = -2;
@@ -462,6 +474,7 @@ void move_player(char input) {
             player_y = next_y;
             is_jumping = 0; 
             velocity_y = 0;
+
             return; 
         }
     } 
@@ -495,15 +508,17 @@ void move_player(char input) {
                     break;
                 }
                 
-                // check_collisions 함수 내의 적 충돌 기능을 y축 한 픽셀씩 이동할때마다 검사하기 위해 move_player 함수 내로 이동
-                // 적 충돌 로직이 중복되어도 여기서 적과 충돌하여 init_stage()로 인해 목숨이 2개 감소하는 현상은 없음
+                // check_collisions 함수 내의 적 충돌 기능을 한 픽셀씩 이동할때마다 검사하기 위해 move_player 함수 내로 이동
+                // 적 충돌 기능이 중복되어도 여기서 적과 충돌하여 init_stage()로 인해 플레이어가 처음 위치로 이동해서 목숨이 2개 감소하는 현상은 없음
                 for (int i = 0; i < enemy_count; i++) {
                     if (y == enemies[i].y && player_x == enemies[i].x) {
                         score = (score > 50) ? score - 50 : 0;
                         life--;
+
                         if (life > 0) {
                             init_stage();
                         }
+
                         return;
                     }
                 } 
@@ -514,6 +529,8 @@ void move_player(char input) {
                 target_y = player_y; // 이동하지 못하도록 목표 위치를 현재 위치로 재설정
             }
         }
+
+        //낙하시 충돌 검사
         else if (velocity_y >= 0) {
             int landed = 0;
             // 이동 경로 (player_y + 1)부터 target_y까지의 모든 칸 검사
@@ -521,6 +538,7 @@ void move_player(char input) {
             for (int y = y_start + 1; y <= target_y; y++) {
                 if (y >= map_height) { 
                     landed = 2; 
+
                     break;
                 }
                 
@@ -531,6 +549,7 @@ void move_player(char input) {
                     is_jumping = 0;
                     velocity_y = 0;
                     landed = 1;
+
                     break;
                 }
                 
@@ -538,9 +557,11 @@ void move_player(char input) {
                     if (y == enemies[i].y && player_x == enemies[i].x) {
                         score = (score > 50) ? score - 50 : 0;
                         life--;
+
                         if (life > 0) {
                             init_stage();
                         }
+
                         return;
                     }
                 }
@@ -548,6 +569,7 @@ void move_player(char input) {
             if (landed == 1) return; 
             if (landed == 2) { 
                 init_stage(); 
+
                 return;
             }
         }
