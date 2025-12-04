@@ -253,8 +253,8 @@ void load_maps() {
     char line[2600];
 
     while (fgets(line, sizeof(line), file)) {
-        line[strcspn(line, "\n\r")] = 0; // 줄 바꿈 문자 제거
-        if (strlen(line) > 0 && line[0] != 'L') {
+        line[strcspn(line, "\n\r")] = 0; // 줄 바꿈 문자를 제거
+        if (strlen(line) > 0 && line[0] != '\n') {
             map_width = strlen(line);
             break;
         }
